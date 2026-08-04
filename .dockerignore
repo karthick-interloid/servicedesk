@@ -1,0 +1,38 @@
+# Build context excludes — keep the image small and secrets out.
+
+# dependencies & build output (reinstalled/regenerated inside the image)
+node_modules
+.next
+out
+build
+
+# env files — the build receives values via build args, never from these.
+# Keeping secrets (.env.local) out of the image is the important part.
+.env
+.env.*
+
+# version control & CI
+.git
+.gitignore
+.github
+
+# tests & coverage (not needed to build the app)
+test
+test-results
+playwright-report
+playwright/.cache
+coverage
+
+# tooling / editor / docs
+.husky
+.vscode
+.idea
+docs
+*.md
+
+# misc
+Dockerfile
+.dockerignore
+docker-compose.yml
+npm-debug.log*
+*.tsbuildinfo

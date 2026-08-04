@@ -1,0 +1,45 @@
+# Convenience wrapper around the Dockerfile for local production runs:
+#   docker compose up --build
+#
+# Prerequisite: copy .env.example to .env.local and fill in real values
+# (at minimum SESSION_SECRET). The app validates env at startup and won't boot
+# without the required vars.
+
+services:
+  web:
+    build:
+      context: .
+      # NEXT_PUBLIC_* are baked into the client bundle at build time. These read
+      # from your shell / a root `.env` file, falling back to localhost defaults.
+      # For a real deployment, set them so the client bundle points at the right host.
+      args:
+        SESSION_SECRET: ${SESSION_SECRET:-build-time-placeholder-session-secret-change-me}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-Starter Template}
+        NEXT_PUBLIC_SITE_DESCRIPTION: ${NEXT_PUBLIC_SITE_DESCRIPTION:-A production-ready Next.js starter template.}
+        NEXT_PUBLIC_TWITTER_HANDLE: ${NEXT_PUBLIC_TWITTER_HANDLE:-}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+        # Only needed when running more than one replica of the same build (see
+        # the Dockerfile). Leave empty for single-container runs.
+        NEXT_BUILD_ID: ${NEXT_BUILD_ID:-}
+        NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}
+    # Host port is configurable (HOST_PORT); the container always listens on 3000.
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    # Runtime env for the server process (server-only secrets + re-validated vars).
+    # env.ts re-validates process.env on startup, so all required vars must be here too.
+    # required: false so a fresh clone without .env.local doesn't hard-fail (the app
+    # will still refuse to boot if required vars are truly missing — that's env.ts's job).
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+    # Uncomment to cap resources (recommended in production; tune to your workload):
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "1.0"
+    #       memory: 512M

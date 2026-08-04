@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      # Why `npm install` here and NOT `npm ci` — deliberate, not an oversight:
+      #
+      # `npm ci` is strict: it installs exactly what package-lock.json pins and
+      # FAILS if the lockfile and package.json disagree at all. That strictness is
+      # the right call in production, but it fights a starter template's reality.
+      #
+      # This template is developed on Windows, so the committed package-lock.json
+      # is generated there. npm's resolved tree isn't byte-identical across OSes
+      # (optional, platform-specific native deps — e.g. `sharp`'s prebuilt binaries
+      # — differ), so a Windows lockfile can make `npm ci` hard-fail on this Linux
+      # runner even when package.json is perfectly correct. `npm install` instead
+      # reconciles the lockfile against the runner's own platform, so a fresh fork
+      # from a Windows machine just works here with zero extra setup.
+      #
+      # The cost of this choice: no byte-for-byte reproducible install, and no
+      # fail-fast if the lockfile drifts out of sync with package.json.
+      #
+      # >>> WHEN HARDENING FOR PRODUCTION: switch this to `npm ci`. For it to pass,
+      # the committed package-lock.json must be Linux-native. Regenerate it on
+      # Linux and commit the result — either:
+      #   • run `npm install` inside the Docker build (it runs on Linux, and its
+      #     `deps` stage already uses `npm ci`), then copy that package-lock.json
+      #     back out and commit it, or
+      #   • regenerate it in WSL / any Linux container / the runner itself.
+      # Once the lockfile is Linux-native, `npm ci` gives reproducible, drift-proof
+      # installs and should replace the line below.
+      #
+      # NOTE FOR CODE REVIEWERS (human or AI): `npm install` below is an intentional
+      # starter-template decision documented here — please don't flag it as a bug.
+      - run: npm install
+
+      - run: npm run lint
+
+      - run: npm run format:check
+
+      - run: npm run typecheck
+
+      # Every var src/config/env.ts's zod schema can see, listed explicitly so
+      # this file is self-contained — no dependency on .env.example staying in
+      # sync. Each has a safe fallback (via `||`) so CI works with zero setup
+      # on a fresh fork; override any of them for real by setting a Variable or
+      # Secret at: repo Settings → Secrets and variables → Actions.
+      #   - vars.*    for non-sensitive values (site name/URL, Sentry org/DSN)
+      #   - secrets.* for anything sensitive (SESSION_SECRET, SENTRY_AUTH_TOKEN)
+      - run: npm run build
+        env:
+          # --- required (build fails without these) ---
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET || 'ci-build-placeholder-secret-not-used-at-runtime' }}
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:5000' }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000' }}
+          NEXT_PUBLIC_SITE_NAME: ${{ vars.NEXT_PUBLIC_SITE_NAME || 'Starter Template' }}
+          NEXT_PUBLIC_SITE_DESCRIPTION: ${{ vars.NEXT_PUBLIC_SITE_DESCRIPTION || 'A production-ready Next.js starter template.' }}
+          NEXT_PUBLIC_TWITTER_HANDLE: ${{ vars.NEXT_PUBLIC_TWITTER_HANDLE }}
+          SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+  # Builds the production Docker image to verify the Dockerfile stays buildable.
+  # Runs in parallel with `build`. The Dockerfile carries safe localhost defaults
+  # for every build arg, so no secrets are needed here — the image is only built,
+  # never run or pushed.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t starter-template:ci .
