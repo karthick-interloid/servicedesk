@@ -1,3 +1,6 @@
 .next
 node_modules
 package-lock.json
+# Stock shadcn CLI output — keep byte-identical so `shadcn add --dry-run` still
+# reports `skip (identical)` and drift stays detectable. See TEMPLATE_SUMMARY.md §Known constraints 1.
+src/components/ui/**

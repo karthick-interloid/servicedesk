@@ -1,8 +1,31 @@
-import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { Slot } from "radix-ui";
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { Loader2 } from "lucide-react"
+import { Slot } from "radix-ui"
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
+
+/* ADDITIVE EXTENSIONS — components-map.md rows 39, 40, 41. Nothing stock is edited
+   or removed; every entry below is a new key in an existing cva group, plus one new
+   optional prop. Reasons, one per addition:
+
+   variant.primary / .neutral / .quiet / .danger
+     docs/treatments.md §8 B1, B2, B4 records that the stock default/secondary/ghost/
+     destructive variants do not render the design: stock `secondary` is a filled
+     slate chip where the design is white + `border-input`; stock `destructive` is
+     `bg-destructive/10 text-destructive` where the design is solid red on white; and
+     stock `default` hovers to /80 where the design hovers /90 and presses /80. Row 39
+     assumed "STOCK fails only on sizing", which §8 contradicts. Adding four new
+     variant values is the additive fix — see the strategy-change note in the map.
+
+   size.touch-sm / .touch / .touch-lg / .touch-icon
+     Row 39's own requirement: the design floors every button at 44px below `md:`
+     (`h-11 md:h-8` / `h-11 md:h-10` / `h-12`). Stock sizes are single fixed heights
+     with no floor.
+
+   loading
+     Row 40. Keeps the label and swaps a spinner in, so the button never changes
+     width. shadcn's Button has no loading concept. */
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -19,6 +42,15 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        /* `font-semibold` is part of each design variant, not the shared base: the base's
+           `font-medium` is stock and editing it would change every existing variant. */
+        primary:
+          "bg-primary font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/80",
+        neutral:
+          "border-input bg-card font-semibold text-secondary-foreground shadow-xs hover:bg-secondary",
+        quiet: "font-semibold text-secondary-foreground hover:bg-secondary",
+        danger:
+          "bg-destructive font-semibold text-primary-foreground shadow-xs hover:bg-destructive/90 active:bg-destructive/80",
       },
       size: {
         default:
@@ -32,26 +64,34 @@ const buttonVariants = cva(
         "icon-sm":
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
+        "touch-sm": "h-11 gap-1.5 px-3 md:h-8",
+        touch: "h-11 gap-1.5 px-4 md:h-10",
+        "touch-lg": "h-12 gap-2 px-6",
+        "touch-icon": "size-11 md:size-10",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
     },
-  },
-);
+  }
+)
 
 function Button({
   className,
   variant = "default",
   size = "default",
   asChild = false,
+  loading = false,
+  disabled,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
-    asChild?: boolean;
+    asChild?: boolean
+    loading?: boolean
   }) {
-  const Comp = asChild ? Slot.Root : "button";
+  const Comp = asChild ? Slot.Root : "button"
 
   return (
     <Comp
@@ -59,9 +99,22 @@ function Button({
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
+      {...(asChild ? {} : { disabled: disabled || loading })}
+      {...(loading ? { "aria-busy": true } : {})}
       {...props}
-    />
-  );
+    >
+      {/* Slot accepts exactly one element child, so the spinner is only ever added on
+         the plain-button path. `asChild` callers own their own loading affordance. */}
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
+          {children}
+        </>
+      )}
+    </Comp>
+  )
 }
 
-export { Button, buttonVariants };
+export { Button, buttonVariants }
