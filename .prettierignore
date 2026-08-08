@@ -4,6 +4,11 @@ package-lock.json
 # Stock shadcn CLI output — keep byte-identical so `shadcn add --dry-run` still
 # reports `skip (identical)` and drift stays detectable. See TEMPLATE_SUMMARY.md §Known constraints 1.
 #
+# NOT CLI OUTPUT: src/components/ui/form.tsx is hand-written — this project's `radix-nova`
+# style ships an EMPTY `form` registry item, so `shadcn add form` writes nothing at all and
+# there is no stock version to drift from. It follows the same house style as its siblings
+# (no semicolons) so the folder stays internally consistent under this ignore rule.
+#
 # EXCEPTION, signed off 2026-08-07: src/components/ui/alert.tsx carries a correctness fix
 # (its already-declared `tone` prop was never forwarded to the cva). `--dry-run` will no
 # longer report `skip (identical)` for that one file; every other file here is still stock.

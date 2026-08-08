@@ -1,11 +1,20 @@
 "use client";
 
-import * as React from "react";
 import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -16,6 +25,7 @@ import {
 import { AuthCard } from "@/features/auth/components/auth-card";
 import { SignupStepper } from "@/features/auth/components/signup-stepper";
 import { DEFAULT_TIMEZONE_ID, TIMEZONES, timezoneHint } from "@/features/auth/lib/timezones";
+import { createOrgSchema, type CreateOrgValues } from "@/features/auth/schemas/create-org";
 
 /**
  * "Create your organization", transcribed from `Update design.dc.html` → the `scrCreateOrg`
@@ -40,150 +50,122 @@ import { DEFAULT_TIMEZONE_ID, TIMEZONES, timezoneHint } from "@/features/auth/li
 const SEED_NAME = "Northwind Support";
 const SEED_SLUG = "northwind";
 
-/** The design's own taken-slug copy, kept so the error state matches the capture. */
-const TAKEN_SLUG = "northwind";
-
-/** Lowercase alphanumerics and inner hyphens — what a subdomain label allows. */
-const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-type Errors = {
-  name?: string;
-  slug?: string;
-};
+/** Matches the field metrics measured on login: 42px, 6px radius. */
+const FIELD_CLASS = "h-11 rounded-sm text-sm md:h-10.5";
 
 export function CreateOrgForm() {
   const router = useRouter();
-  const [name, setName] = React.useState(SEED_NAME);
-  const [slug, setSlug] = React.useState(SEED_SLUG);
-  const [timezone, setTimezone] = React.useState(DEFAULT_TIMEZONE_ID);
-  const [errors, setErrors] = React.useState<Errors>({});
+  const form = useForm<CreateOrgValues>({
+    resolver: zodResolver(createOrgSchema),
+    defaultValues: { name: SEED_NAME, slug: SEED_SLUG, timezone: DEFAULT_TIMEZONE_ID },
+  });
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    // Intercepted so the browser never posts — advancing is done by the router below.
-    event.preventDefault();
+  // The portal-address hint tracks the field live, so it stays the same string the
+  // schema will normalise on submit. `useWatch` rather than `form.watch()`: the latter
+  // returns an unmemoizable function and makes React Compiler skip the whole component.
+  const slug = useWatch({ control: form.control, name: "slug" });
 
-    const next: Errors = {};
-    const trimmedName = name.trim();
-    const trimmedSlug = slug.trim().toLowerCase();
-
-    if (!trimmedName) next.name = "Enter an organization name";
-
-    if (!trimmedSlug) next.slug = "Enter a portal address";
-    else if (!SLUG_PATTERN.test(trimmedSlug))
-      next.slug = "Use lowercase letters, numbers and hyphens only";
-    else if (trimmedSlug === TAKEN_SLUG)
-      // No registry exists, so the design's seeded address stands in for a taken one —
-      // this is what makes the error state reachable through the UI.
-      next.slug = `That address is taken. Try ${trimmedSlug}-support.`;
-
-    setErrors(next);
-    if (Object.keys(next).length > 0) return;
-
+  function onSubmit() {
     // Nothing is created — this only advances the flow to the next route.
     router.push("/onboarding");
   }
 
   return (
-    // 440px cap, 16px radius, 32px padding (24/20 below md), 18px block gap — `authCard`.
-    <AuthCard onSubmit={handleSubmit}>
-      <SignupStepper currentStep={2} />
+    <Form {...form}>
+      {/* 440px cap, 16px radius, 32px padding (24/20 below md), 18px block gap — `authCard`. */}
+      <AuthCard onSubmit={form.handleSubmit(onSubmit)}>
+        <SignupStepper currentStep={2} />
 
-      <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-bold tracking-[0.1em] text-brand-accent uppercase">
-          Step 2 of 4
-        </span>
-        <h1 className="text-2xl font-bold tracking-[-0.025em] text-balance text-foreground">
-          Create your organization
-        </h1>
-        <p className="text-sm leading-[1.6] text-muted-foreground">
-          This is what your customers see on the portal and in every reply.
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="signup-name" className="font-semibold text-foreground">
-          Organization name
-        </Label>
-        <Input
-          id="signup-name"
-          name="organization"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          aria-invalid={Boolean(errors.name)}
-          aria-describedby={errors.name ? "signup-name-error" : undefined}
-          className="h-11 rounded-sm text-sm md:h-10.5"
-        />
-        {errors.name ? (
-          <p id="signup-name-error" className="text-sm text-destructive-strong">
-            {errors.name}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-bold tracking-[0.1em] text-brand-accent uppercase">
+            Step 2 of 4
+          </span>
+          <h1 className="text-2xl font-bold tracking-[-0.025em] text-balance text-foreground">
+            Create your organization
+          </h1>
+          <p className="text-sm leading-[1.6] text-muted-foreground">
+            This is what your customers see on the portal and in every reply.
           </p>
-        ) : null}
-      </div>
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="signup-slug" className="font-semibold text-foreground">
-          Portal address
-        </Label>
-        <Input
-          id="signup-slug"
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem id="signup-name" className="flex flex-col gap-1.5">
+              <FormLabel className="font-semibold text-foreground">Organization name</FormLabel>
+              <FormControl>
+                <Input className={FIELD_CLASS} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="slug"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          value={slug}
-          onChange={(event) => setSlug(event.target.value)}
-          aria-invalid={Boolean(errors.slug)}
-          aria-describedby={errors.slug ? "signup-slug-error" : "signup-slug-hint"}
-          className="h-11 rounded-sm text-sm md:h-10.5"
+          render={({ field }) => (
+            <FormItem id="signup-slug" className="flex flex-col gap-1.5">
+              <FormLabel className="font-semibold text-foreground">Portal address</FormLabel>
+              <FormControl>
+                <Input
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className={FIELD_CLASS}
+                  {...field}
+                />
+              </FormControl>
+              {/* `FormDescription` yields to the error rather than stacking under it —
+                  the design replaces the hint. See components/ui/form.tsx. */}
+              <FormDescription>
+                {slug.trim().toLowerCase() || "your-org"}.servicedesk.pro
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        {/* The design replaces the hint with the error rather than stacking them. The
-            hint tracks the field live — it is the same `{slug}.servicedesk.pro` string. */}
-        {errors.slug ? (
-          <p id="signup-slug-error" className="text-sm text-destructive-strong">
-            {errors.slug}
-          </p>
-        ) : (
-          <p id="signup-slug-hint" className="text-sm text-muted-foreground">
-            {slug.trim().toLowerCase() || "your-org"}.servicedesk.pro
-          </p>
-        )}
-      </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="signup-timezone" className="font-semibold text-foreground">
-          Time zone
-        </Label>
-        <Select value={timezone} onValueChange={setTimezone}>
-          {/* `!` is load-bearing: SelectTrigger's own `data-[size=default]:h-8` is an
-              attribute-qualified rule and outranks a plain height class, which silently
-              rendered a 32px control against the design's 42px. */}
-          <SelectTrigger
-            id="signup-timezone"
-            className="h-11! w-full rounded-sm text-sm md:h-10.5!"
+        <FormField
+          control={form.control}
+          name="timezone"
+          render={({ field }) => (
+            <FormItem id="signup-timezone" className="flex flex-col gap-1.5">
+              <FormLabel className="font-semibold text-foreground">Time zone</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  {/* `!` is load-bearing: SelectTrigger's own `data-[size=default]:h-8` is
+                      an attribute-qualified rule and outranks a plain height class, which
+                      silently rendered a 32px control against the design's 42px. */}
+                  <SelectTrigger className="h-11! w-full rounded-sm text-sm md:h-10.5!">
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {TIMEZONES.map((zone) => (
+                    <SelectItem key={zone.id} value={zone.id}>
+                      {zone.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* Bound to the selection, so it stays true as the zone changes. */}
+              <FormDescription>{timezoneHint(field.value)}</FormDescription>
+            </FormItem>
+          )}
+        />
+
+        {/* 112×52, left-aligned — the capture's own geometry, not login's full-width CTA. */}
+        <div className="flex gap-2.5">
+          <Button
+            type="submit"
+            className="h-13 bg-brand-accent px-5 text-base font-semibold text-brand-accent-foreground hover:bg-brand-accent/90"
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TIMEZONES.map((zone) => (
-              <SelectItem key={zone.id} value={zone.id}>
-                {zone.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {/* Bound to the selection, so it stays true as the zone changes. */}
-        <p className="text-sm text-muted-foreground">{timezoneHint(timezone)}</p>
-      </div>
-
-      {/* 112×52, left-aligned — the capture's own geometry, not login's full-width CTA. */}
-      <div className="flex gap-2.5">
-        <Button
-          type="submit"
-          className="h-13 bg-brand-accent px-5 text-base font-semibold text-brand-accent-foreground hover:bg-brand-accent/90"
-        >
-          Continue
-        </Button>
-      </div>
-    </AuthCard>
+            Continue
+          </Button>
+        </div>
+      </AuthCard>
+    </Form>
   );
 }
