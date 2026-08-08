@@ -3,4 +3,9 @@ node_modules
 package-lock.json
 # Stock shadcn CLI output — keep byte-identical so `shadcn add --dry-run` still
 # reports `skip (identical)` and drift stays detectable. See TEMPLATE_SUMMARY.md §Known constraints 1.
+#
+# EXCEPTION, signed off 2026-08-07: src/components/ui/alert.tsx carries a correctness fix
+# (its already-declared `tone` prop was never forwarded to the cva). `--dry-run` will no
+# longer report `skip (identical)` for that one file; every other file here is still stock.
+# The glob already covers it, so lint-staged will not reformat the rest of the file.
 src/components/ui/**

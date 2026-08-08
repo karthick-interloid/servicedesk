@@ -94,6 +94,8 @@
   --color-chart-muted: var(--chart-muted);
   --color-brand-soft: var(--brand-soft);
   --color-brand-ink: var(--brand-ink);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
   --color-brand-hover: var(--brand-hover);
   --color-brand-pressed: var(--brand-pressed);
 
@@ -125,6 +127,17 @@
   --brand-base: #166534;
   --brand-hover: #15803d;
   --brand-pressed: #14532d;
+
+  /* Product brand accent. ADDED, not a redefinition — no existing token's value moved.
+     `Update design.dc.html` overrides `--blue-base` at runtime with its `accent` prop, and
+     every prototype screen renders teal-700: the Log in capture measures 5,463px of
+     #0F766E and zero pixels of #166534. `Design System.dc.html` measures the reverse
+     (96,774px of #166534), because it documents the token default rather than the tenant
+     accent. Both stay faithful: product surfaces paint from --brand-accent, the
+     design-system route keeps --primary. Unify them when the brand is settled.
+     See docs/LOGIN-DIFF.md and docs/SHELL-DIFF.md A15. */
+  --brand-accent: #0f766e;
+  --brand-accent-foreground: #ffffff;
 
   --background: #f8fafc;
   --foreground: #0f172a;
@@ -245,6 +258,26 @@
   --note: var(--color-amber-950);
   --note-border: var(--color-amber-800);
   --note-foreground: var(--color-amber-300);
+}
+
+/* ---------------------------------------------------------------------------
+   Sheet-drawer sidebar width. `Update design.dc.html` measures 272px for the
+   below-lg overlay (the narrow branch of `sidebarStyle`). `ui/sidebar.tsx` writes
+   `--sidebar-width: 18rem` as an *inline* style on the drawer's SheetContent and
+   drops `className` in that branch, and the sheet portals out of the provider —
+   so an !important custom property here is the only override that does not edit
+   ui/. The permanent 252/288px widths need none of this: they ride on
+   SidebarProvider in src/app/(app)/layout.tsx.
+
+   `width` has to be restated alongside the property: ui/sheet.tsx bakes in
+   `data-[side=left]:w-3/4` (plus `sm:max-w-sm`), and an attribute-qualified selector
+   outranks the plain `w-(--sidebar-width)` that ui/sidebar.tsx layers on top — so the
+   drawer otherwise lands at 75% of the viewport (281px at 375) regardless of the
+   variable. See docs/SHELL-DIFF.md §Deviations.
+   --------------------------------------------------------------------------- */
+[data-slot="sidebar"][data-mobile="true"] {
+  --sidebar-width: 272px !important;
+  width: var(--sidebar-width) !important;
 }
 
 /* 1.3s pulse — matches the prototype; Tailwind's animate-pulse is 2s.

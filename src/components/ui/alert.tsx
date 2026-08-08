@@ -1,3 +1,14 @@
+/* SANCTIONED DEVIATION FROM STOCK — correctness only, signed off 2026-08-07.
+   The `tone` cva group below (info/success/warning/error) was already declared and
+   already exposed through VariantProps, so `tone="error"` typechecked — but `Alert`
+   destructured only { className, variant } and called alertVariants({ variant }). The
+   prop never reached the cva, leaked onto the DOM as a stray attribute, and every toned
+   alert rendered plain `bg-card` white (measured #FFFFFF where the design draws #FEF2F2).
+   The fix forwards `tone` alongside `variant` and stops it reaching the DOM. No variant
+   was added, no style changed, no design moved.
+   Consequence: `shadcn add alert --dry-run` no longer reports `skip (identical)` for this
+   file. Accepted. See docs/LOGIN-DIFF.md §C. */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -38,13 +49,14 @@ const alertVariants = cva(
 function Alert({
   className,
   variant,
+  tone,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
     <div
       data-slot="alert"
       role="alert"
-      className={cn(alertVariants({ variant }), className)}
+      className={cn(alertVariants({ variant, tone }), className)}
       {...props}
     />
   )

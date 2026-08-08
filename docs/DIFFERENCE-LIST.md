@@ -57,6 +57,16 @@ mid-sentence splice `"…rather than reusing the primary ramp. l size, so the sy
 (`DESIGN_SUMMARY` ambiguity #12). This build carries a repaired sentence — a deliberate divergence
 from the source, flagged here rather than propagated.
 
+> ⚠ **Alerts re-rendered 2026-08-07 — captures below are stale for §Alerts & banners.**
+> `ui/alert.tsx` declared a `tone` cva group but never forwarded the prop, so all four
+> toned alerts on this route rendered plain white `bg-card` rather than their soft
+> surfaces. Fixed upstream (a signed-off 2-line correctness edit; see
+> `docs/LOGIN-DIFF.md` §C). They now measure `#FEF2F2` / `#FFFBEB` / `#E4F6EC` / `#EEF2FF`
+> with their matching `-strong` inks. Rows **A6** and **A7** below describe the _border_
+> treatment and remain accurate — but they were written against a render in which no fill
+> was applied at all. Re-capture `verification/design-system--*.png` before relying on
+> them again.
+
 Causes are classified **token** · **treatment** · **component-internal** · **design-ambiguity**.
 
 ---

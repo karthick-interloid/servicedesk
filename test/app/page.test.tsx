@@ -1,25 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import Home from "@/app/page";
+import DashboardPage from "@/app/(app)/page";
 
-// Home is a synchronous Server Component, so Vitest can render it directly.
-// (async Server Components are covered by the Playwright E2E tests instead.)
-describe("Home page", () => {
-  it("renders the hero heading", () => {
-    render(<Home />);
+// The starter landing page was removed when the authenticated shell took over `/`.
+// DashboardPage is a synchronous Server Component, so Vitest can render it directly.
+describe("Dashboard page", () => {
+  it("renders the placeholder heading", () => {
+    render(<DashboardPage />);
     expect(
-      screen.getByRole("heading", {
-        level: 1,
-        name: /ship production-ready apps/i,
-      }),
+      screen.getByRole("heading", { level: 1, name: /dashboard — coming soon/i }),
     ).toBeInTheDocument();
-  });
-
-  it("links to the about page", () => {
-    render(<Home />);
-    const aboutLinks = screen
-      .getAllByRole("link")
-      .filter((el) => el.getAttribute("href") === "/about");
-    expect(aboutLinks.length).toBeGreaterThan(0);
   });
 });

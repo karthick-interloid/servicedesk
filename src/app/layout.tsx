@@ -4,7 +4,6 @@ import { siteConfig } from "@/config/site";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/context/theme-provider";
-import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { themeInitScript } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -77,9 +76,6 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
-          <div className="fixed top-4 right-4 z-50">
-            <ThemeToggle />
-          </div>
           {children}
           <Toaster />
         </ThemeProvider>
