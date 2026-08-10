@@ -72,6 +72,7 @@
     "lint-staged": "^17.0.8",
     "prettier": "^3.9.5",
     "prettier-plugin-tailwindcss": "^0.8.0",
+    "supabase": "^2.113.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
