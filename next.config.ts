@@ -52,7 +52,7 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // Emit a minimal, self-contained server bundle (.next/standalone) for Docker —
   // only the traced runtime files + node_modules, not the whole repo. See Dockerfile.
-  output: "standalone",
+  // output: "standalone",
   // Pin the build ID when running multiple replicas of the same build (so they all
   // agree and avoid version skew). Reads NEXT_BUILD_ID if set; otherwise returns null,
   // which tells Next.js to use its own per-build default (fine for single-instance).
