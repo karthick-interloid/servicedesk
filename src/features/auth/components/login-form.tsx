@@ -18,8 +18,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { AuthCard } from "@/features/auth/components/auth-card";
+import { useGoogleLogin, useLogin } from "@/features/auth/hooks/use-auth";
 import { loginSchema, type LoginValues } from "@/features/auth/schemas/login";
-import { ORG } from "@/features/shell/lib/identity";
+import type { AuthFailureCode } from "@/features/auth/types";
+import type { ShellIdentity } from "@/features/shell/lib/identity";
 
 /**
  * Login card, transcribed from `Update design.dc.html` → `authCard` and the `scrLogin`
@@ -29,34 +31,92 @@ import { ORG } from "@/features/shell/lib/identity";
  * 42px tall with a 6px radius; both buttons 52px. Field metrics override the design
  * system's documented 40px — this screen renders 42px and the screen wins.
  *
- * VISUAL + CLIENT VALIDATION ONLY. There is no auth, no session, no server action. Submit
- * is intercepted, validated by `loginSchema`, and then reports the design's own failure
- * copy so the error state is reachable; nothing is sent anywhere.
+ * LIVE. Submit runs `loginSchema` client-side, then calls `loginAction`, which re-validates
+ * and signs in against Supabase. On success the session lands in httpOnly cookies and
+ * `useLogin` redirects to `/`. The error states below are real server outcomes now, not the
+ * hand-set demo copy this screen shipped with.
  */
-
-/** The design's seeded values, so the screen renders as the capture does. */
-const SEED_EMAIL = "sam@northwind.io";
 
 /** 42px measured on this screen, 44px touch floor below md; 6px radius. */
 const FIELD_CLASS = "h-11 rounded-sm text-sm md:h-10.5";
 
-export function LoginForm() {
+/**
+ * The bold lead-in of the design's error Alert, per failure. The design only drew the
+ * credential case; the rest reuse its shape so a rate limit or a misconfigured project
+ * doesn't render as a blank headline.
+ */
+const ERROR_HEADLINE: Record<AuthFailureCode, string> = {
+  invalid_credentials: "That email and password don't match.",
+  email_not_confirmed: "Confirm your email first.",
+  rate_limited: "Too many attempts.",
+  validation: "Check your details.",
+  unknown: "We couldn't sign you in.",
+};
+
+export function LoginForm({
+  identity,
+  initialError,
+}: {
+  identity: ShellIdentity | null;
+  /** Message from the OAuth callback's `?error=`, shown in the same banner as a failed submit. */
+  initialError?: string;
+}) {
+  const { login, isPending } = useLogin();
+  const { signInWithGoogle, isPending: isGooglePending } = useGoogleLogin();
+
   const form = useForm<LoginValues>({
+    // Empty, not the design's seeded `sam@northwind.io`. That address made the capture
+    // render as drawn, but on a live form it pre-fills a real person's login for whoever
+    // opens the page. Restore the seed in `defaultValues` if you need a capture-identical
+    // screenshot.
+    defaultValues: { email: "", password: "", remember: false },
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: SEED_EMAIL, password: "", remember: false },
   });
 
-  function onSubmit() {
-    // No credential check exists, so a well-formed submission lands on the design's own
-    // failure copy. This is what makes the error state demonstrable — and it is set by
-    // hand precisely because it is NOT a shape error the schema could have caught.
-    form.setError("root", {
-      message: "Check your password, or reset it. Two attempts left before a 15-minute lock.",
-    });
-    form.setError("password", { message: "Incorrect password" });
+  async function onSubmit(values: LoginValues) {
+    // `root` isn't a registered field, so react-hook-form's own pre-submit validation pass
+    // won't clear it — a stale banner would otherwise outlive the attempt that caused it.
+    form.clearErrors("root");
+
+    const result = await login(values);
+
+    if (result.success) {
+      // `useLogin` handles the redirect; nothing to do but let the button stay disabled.
+      return;
+    }
+
+    // Field-level messages only exist for a schema failure, which the client resolver
+    // normally catches first — these arrive when the server disagrees, e.g. a direct POST.
+    for (const [field, messages] of Object.entries(result.fieldErrors ?? {})) {
+      const message = messages?.[0];
+      if (message) {
+        form.setError(field as keyof LoginValues, { message });
+      }
+    }
+
+    form.setError("root", { type: result.code, message: result.message });
   }
 
-  const formError = form.formState.errors.root?.message;
+  async function onGoogleSignIn() {
+    form.clearErrors("root");
+
+    const result = await signInWithGoogle();
+
+    // Success means the browser is already navigating to Google; only a failure lands here
+    // with anything to say.
+    if (!result.success) {
+      form.setError("root", { type: result.code, message: result.message });
+    }
+  }
+
+  /*
+   * A `?error=` from the OAuth callback stands in until the user does something — the first
+   * submit or Google attempt clears `root` and takes the banner over.
+   */
+  const formError = form.formState.errors.root;
+  const bannerMessage = formError?.message ?? initialError;
+  const errorHeadline = ERROR_HEADLINE[(formError?.type as AuthFailureCode) ?? "unknown"];
+  const busy = isPending || isGooglePending;
 
   return (
     <Form {...form}>
@@ -64,7 +124,7 @@ export function LoginForm() {
       <AuthCard onSubmit={form.handleSubmit(onSubmit)}>
         <div className="flex flex-col gap-1.5">
           <h1 className="text-2xl font-bold tracking-[-0.025em] text-balance text-foreground">
-            Sign in to {ORG.name}
+            Sign in to {identity?.org.name}
           </h1>
           <p className="text-sm leading-[1.6] text-muted-foreground">
             Work your queue against live SLA targets.
@@ -73,12 +133,11 @@ export function LoginForm() {
 
         {/* 10px radius and 12/14px padding are this screen's own; the tone comes from the
             primitive. Only the radius/padding differ from the Alert default. */}
-        {formError ? (
+        {bannerMessage ? (
           <Alert tone="error" className="rounded-[10px] px-3.5 py-3">
             <CircleAlert className="size-[18px]" aria-hidden />
             <AlertDescription className="text-sm leading-[1.55]">
-              <span className="font-bold">That email and password don&apos;t match.</span>{" "}
-              {formError}
+              <span className="font-bold">{errorHeadline}</span> {bannerMessage}
             </AlertDescription>
           </Alert>
         ) : null}
@@ -158,9 +217,10 @@ export function LoginForm() {
           {/* 52px measured; the design's `lg` button with a full-width `fullBtn` override. */}
           <Button
             type="submit"
+            disabled={busy}
             className="h-13 w-full bg-brand-accent text-base font-semibold text-brand-accent-foreground hover:bg-brand-accent/90"
           >
-            Sign in
+            {isPending ? "Signing in…" : "Sign in"}
           </Button>
 
           <div className="flex items-center gap-2.5 text-xs text-muted-foreground/80">
@@ -169,13 +229,18 @@ export function LoginForm() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          {/* Social login, inert: no provider, no OAuth, no handler in this pass. */}
+          {/* LIVE. `useGoogleLogin` asks the server for the consent URL and hands the
+              browser to Google; the session is created on the way back, in
+              `src/app/auth/callback/route.ts`. `type="button"` matters — inside a <form>
+              the default is submit, which would run the password path instead. */}
           <Button
             type="button"
             variant="neutral"
+            disabled={busy}
+            onClick={onGoogleSignIn}
             className="h-13 w-full border-input text-base text-brand-accent"
           >
-            Continue with Google
+            {isGooglePending ? "Redirecting to Google…" : "Continue with Google"}
           </Button>
         </div>
 

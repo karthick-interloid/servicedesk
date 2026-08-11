@@ -9,6 +9,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { HeaderSearch } from "@/features/shell/components/header-search";
 import { NotificationMenu } from "@/features/shell/components/notification-menu";
 import { ProfileMenu } from "@/features/shell/components/profile-menu";
+import type { ShellIdentity } from "@/features/shell/lib/identity";
 import { findActiveNavItem } from "@/features/shell/lib/nav";
 
 /**
@@ -20,8 +21,12 @@ import { findActiveNavItem } from "@/features/shell/lib/nav";
  *
  * The search control is a <button>, deliberately: it is the Command palette's trigger,
  * not a text input. It opens nothing yet.
+ *
+ * `identity` arrives as a prop rather than being fetched here: this is a Client Component
+ * (it needs `usePathname`), and `getShellIdentity` reaches `next/headers`. The route-group
+ * layout resolves it once and hands it to the sidebar, this bar and the footer.
  */
-export function AppHeader() {
+export function AppHeader({ identity }: { identity: ShellIdentity | null }) {
   const pathname = usePathname();
   const active = findActiveNavItem(pathname);
   const page = active?.item.label ?? "Dashboard";
@@ -55,7 +60,7 @@ export function AppHeader() {
         <ThemeToggle className="hidden border-transparent bg-transparent p-0 lg:inline-flex" />
 
         <NotificationMenu />
-        <ProfileMenu />
+        <ProfileMenu identity={identity} />
       </div>
     </header>
   );

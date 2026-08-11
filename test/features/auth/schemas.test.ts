@@ -65,10 +65,21 @@ describe("forgotPasswordSchema", () => {
 });
 
 describe("signupAccountSchema", () => {
-  const valid = { email: "ada@acme.io", password: "correct-horse", confirm: "correct-horse" };
+  const valid = {
+    fullName: "Ada Lovelace",
+    email: "ada@acme.io",
+    password: "correct-horse",
+    confirm: "correct-horse",
+  };
 
   it("accepts a well-formed account", () => {
     expect(signupAccountSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("requires a full name, since public.users.full_name is NOT NULL", () => {
+    expect(
+      messageFor(signupAccountSchema.safeParse({ ...valid, fullName: "   " }))("fullName"),
+    ).toBe("Enter your full name");
   });
 
   it("separates the blank password from the too-short one", () => {
@@ -115,10 +126,11 @@ describe("createOrgSchema", () => {
     );
   });
 
-  it("treats the design's seeded address as taken", () => {
-    expect(messageFor(createOrgSchema.safeParse({ ...valid, slug: "northwind" }))("slug")).toBe(
-      "That address is taken. Try northwind-support.",
-    );
+  it("no longer fakes a taken address", () => {
+    // `northwind` was hardcoded as taken to stand in for a registry that didn't exist. The
+    // real uniqueness check now runs against `tenants` in register.service.ts, so the schema
+    // must accept it — rejecting a free address here would be a regression, not a guard.
+    expect(createOrgSchema.safeParse({ ...valid, slug: "northwind" }).success).toBe(true);
   });
 
   it("requires an organization name", () => {

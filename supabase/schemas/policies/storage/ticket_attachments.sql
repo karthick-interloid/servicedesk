@@ -18,7 +18,7 @@ USING (
         -- Tenant staff
         (
             public.is_active_membership()
-            AND public.current_role() IN (
+            AND public.current_tenant_role() IN (
                 'tenant_admin',
                 'manager',
                 'agent'
@@ -31,7 +31,7 @@ USING (
 
         -- Customer: only attachments from own tickets
         (
-            public.current_role() = 'customer'
+            public.current_tenant_role() = 'customer'
             AND (storage.foldername(name))[1] =
                 (auth.jwt() ->> 'tenant_id')
             AND EXISTS (
@@ -62,7 +62,7 @@ WITH CHECK (
         -- Tenant staff
         (
             public.is_active_membership()
-            AND public.current_role() IN (
+            AND public.current_tenant_role() IN (
                 'tenant_admin',
                 'manager',
                 'agent'
@@ -75,7 +75,7 @@ WITH CHECK (
 
         -- Customer: upload only to own ticket
         (
-            public.current_role() = 'customer'
+            public.current_tenant_role() = 'customer'
             AND (storage.foldername(name))[1] =
                 (auth.jwt() ->> 'tenant_id')
             AND EXISTS (
@@ -105,7 +105,7 @@ USING (
     AND (
         (
             public.is_active_membership()
-            AND public.current_role() IN (
+            AND public.current_tenant_role() IN (
                 'tenant_admin',
                 'manager',
                 'agent'
@@ -117,7 +117,7 @@ USING (
         OR
 
         (
-            public.current_role() = 'customer'
+            public.current_tenant_role() = 'customer'
             AND (storage.foldername(name))[1] =
                 (auth.jwt() ->> 'tenant_id')
             AND EXISTS (
@@ -153,7 +153,7 @@ USING (
         -- Staff
         (
             public.is_active_membership()
-            AND public.current_role() IN (
+            AND public.current_tenant_role() IN (
                 'tenant_admin',
                 'manager'
             )
@@ -165,7 +165,7 @@ USING (
 
         -- Customer: own ticket attachments
         (
-            public.current_role() = 'customer'
+            public.current_tenant_role() = 'customer'
             AND (storage.foldername(name))[1] =
                 (auth.jwt() ->> 'tenant_id')
             AND EXISTS (

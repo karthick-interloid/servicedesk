@@ -31,6 +31,7 @@ import {
   signupAccountSchema,
   type SignupAccountValues,
 } from "@/features/auth/schemas/signup-account";
+import { patchSignupDraft } from "@/features/auth/store/signup-draft";
 
 /**
  * DESIGN-AUTHORED. `Update design.dc.html` has no "Your account" step — confirmed absent in
@@ -51,11 +52,20 @@ export function SignupAccountForm() {
   const router = useRouter();
   const form = useForm<SignupAccountValues>({
     resolver: zodResolver(signupAccountSchema),
-    defaultValues: { email: "", password: "", confirm: "" },
+    defaultValues: { fullName: "", email: "", password: "", confirm: "" },
   });
 
-  function onSubmit() {
-    // Nothing is created — this only advances the flow to the next route.
+  function onSubmit(values: SignupAccountValues) {
+    // Still nothing created — the account isn't made until "Finish setup" on /onboarding.
+    // This only parks the answers where the next two routes can reach them. `confirm` is
+    // deliberately not stored: it exists to catch a typo here, and keeping a second copy of
+    // the password around would double the exposure for no gain.
+    patchSignupDraft({
+      fullName: values.fullName,
+      email: values.email,
+      password: values.password,
+    });
+
     router.push("/create-org");
   }
 
@@ -77,6 +87,29 @@ export function SignupAccountForm() {
             This is the login you&rsquo;ll use to work your queue.
           </p>
         </div>
+
+        {/* Not in the design — added because `users.full_name` is NOT NULL. Same metrics as
+            the email field beside it, so the card's rhythm is unchanged. */}
+        <FormField
+          control={form.control}
+          name="fullName"
+          render={({ field }) => (
+            <FormItem id="account-full-name" className="flex flex-col gap-1.5">
+              <FormLabel className="font-semibold text-foreground">Full name</FormLabel>
+              <FormControl>
+                <Input
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Sam Rivera"
+                  className={FIELD_CLASS}
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>Shown to teammates and on tickets you handle.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

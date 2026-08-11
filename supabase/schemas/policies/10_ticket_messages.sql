@@ -45,7 +45,7 @@ USING (
         -- ---------------------------------------------
         -- Tenant staff
         -- ---------------------------------------------
-        public.current_role() IN (
+        public.current_tenant_role() IN (
             'tenant_admin',
             'manager',
             'agent'
@@ -57,7 +57,7 @@ USING (
         -- Customer portal
         -- ---------------------------------------------
         (
-            public.current_role() = 'customer'
+            public.current_tenant_role() = 'customer'
             AND visibility = 'public'
 
             AND EXISTS (
@@ -101,7 +101,7 @@ WITH CHECK (
         -- Staff
         -- ---------------------------------------------
         (
-            public.current_role() IN (
+            public.current_tenant_role() IN (
                 'tenant_admin',
                 'manager',
                 'agent'
@@ -117,7 +117,7 @@ WITH CHECK (
         -- Customer
         -- ---------------------------------------------
         (
-            public.current_role() = 'customer'
+            public.current_tenant_role() = 'customer'
 
             AND author_type = 'customer'
             AND visibility = 'public'
@@ -166,7 +166,7 @@ USING (
         -- ---------------------------------------------
         -- Tenant Admin / Manager
         -- ---------------------------------------------
-        public.current_role() IN (
+        public.current_tenant_role() IN (
             'tenant_admin',
             'manager'
         )
@@ -177,7 +177,7 @@ USING (
         -- Agent can update own message
         -- ---------------------------------------------
         (
-            public.current_role() = 'agent'
+            public.current_tenant_role() = 'agent'
             AND author_type = 'agent'
             AND author_id = auth.uid()
         )
@@ -188,7 +188,7 @@ USING (
         -- Customer can update own public message
         -- ---------------------------------------------
         (
-            public.current_role() = 'customer'
+            public.current_tenant_role() = 'customer'
             AND author_type = 'customer'
             AND visibility = 'public'
 
@@ -209,7 +209,7 @@ WITH CHECK (
         -- ---------------------------------------------
         -- Tenant Admin / Manager
         -- ---------------------------------------------
-        public.current_role() IN (
+        public.current_tenant_role() IN (
             'tenant_admin',
             'manager'
         )
@@ -220,7 +220,7 @@ WITH CHECK (
         -- Agent
         -- ---------------------------------------------
         (
-            public.current_role() = 'agent'
+            public.current_tenant_role() = 'agent'
             AND author_type = 'agent'
             AND author_id = auth.uid()
         )
@@ -231,7 +231,7 @@ WITH CHECK (
         -- Customer
         -- ---------------------------------------------
         (
-            public.current_role() = 'customer'
+            public.current_tenant_role() = 'customer'
             AND author_type = 'customer'
             AND visibility = 'public'
 
@@ -262,7 +262,7 @@ TO authenticated
 USING (
     tenant_id = public.current_tenant_id()
 
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'manager'
     )

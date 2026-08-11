@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AuthShell } from "@/features/auth/components/auth-card";
 import { LoginForm } from "@/features/auth/components/login-form";
+import { getShellIdentity } from "@/features/shell/lib/identity";
 
 export const metadata: Metadata = {
   title: "Log in",
@@ -18,10 +19,21 @@ export const metadata: Metadata = {
  * Container is the design's `authPad`: a centred single column, 22px between the logo row
  * and the card, 56px/24px padding at md and up and 28px/20px below it.
  */
-export default function LoginPage() {
+export default async function LoginPage(props: PageProps<"/login">) {
+  const identity = await getShellIdentity();
+
+  /*
+   * `?error=` is how the OAuth callback reports a failed or cancelled Google sign-in — that
+   * round trip is a full document navigation, so there is no client state left to carry it.
+   * Read here rather than with `useSearchParams` in the form: this is already a Server
+   * Component, and the hook would force the form under a Suspense boundary.
+   */
+  const { error } = await props.searchParams;
+  const initialError = Array.isArray(error) ? error[0] : error;
+
   return (
     <AuthShell>
-      <LoginForm />
+      <LoginForm identity={identity} initialError={initialError} />
     </AuthShell>
   );
 }

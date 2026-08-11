@@ -168,7 +168,17 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+#
+# `googleLogin` asks Supabase to come back to `${NEXT_PUBLIC_SITE_URL}/auth/callback`, which
+# is `http://localhost:3000/...` in .env.example — a different origin from `site_url`'s
+# 127.0.0.1. A `redirectTo` that is not matched here is silently discarded and the user is
+# dropped on `site_url` with no code, so both spellings are listed. Wildcards are allowed
+# (`/**`) and are what makes the `?next=` path on the callback work.
+additional_redirect_urls = [
+  "http://localhost:3000/**",
+  "http://127.0.0.1:3000/**",
+  "https://127.0.0.1:3000",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -341,6 +351,27 @@ url = ""
 skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
+
+# Google sign-in — the "Continue with Google" button on /login.
+#
+# Create an OAuth 2.0 Web application client in the Google Cloud console and give it the
+# Supabase Auth callback as an Authorized redirect URI. That is Supabase's URL, NOT ours:
+#   local     http://127.0.0.1:54321/auth/v1/callback
+#   hosted    https://<project-ref>.supabase.co/auth/v1/callback
+# Our own /auth/callback route is where Supabase sends the browser afterwards, and it is
+# allow-listed through site_url / additional_redirect_urls above instead.
+#
+# Both values come from the environment; neither belongs in git. Put them in
+# supabase/.env (gitignored) or export them before `supabase start`.
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+# Required for local sign-in with Google: the local Auth container cannot verify the nonce
+# against Google's issuer. Leave false in hosted environments.
+skip_nonce_check = true
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.

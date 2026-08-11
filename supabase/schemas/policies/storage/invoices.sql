@@ -9,7 +9,7 @@ TO authenticated
 USING (
     bucket_id = 'invoices'
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'billing_admin'
     )
@@ -25,7 +25,7 @@ TO authenticated
 WITH CHECK (
     bucket_id = 'invoices'
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'billing_admin'
     )
@@ -41,7 +41,7 @@ TO authenticated
 USING (
     bucket_id = 'invoices'
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'billing_admin'
     )
@@ -51,7 +51,7 @@ USING (
 WITH CHECK (
     bucket_id = 'invoices'
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'billing_admin'
     )
@@ -67,7 +67,7 @@ TO authenticated
 USING (
     bucket_id = 'invoices'
     AND public.is_active_membership()
-    AND public.current_role() = 'tenant_admin'
+    AND public.current_tenant_role() = 'tenant_admin'
     AND (storage.foldername(name))[1] =
         (auth.jwt() ->> 'tenant_id')
 );

@@ -59,7 +59,7 @@ USING (
     id = auth.uid()
 
     OR (
-        public.current_role() = 'tenant_admin'
+        public.current_tenant_role() = 'tenant_admin'
         AND public.is_active_membership()
         AND EXISTS (
             SELECT 1
@@ -74,7 +74,7 @@ WITH CHECK (
     id = auth.uid()
 
     OR (
-        public.current_role() = 'tenant_admin'
+        public.current_tenant_role() = 'tenant_admin'
         AND public.is_active_membership()
         AND EXISTS (
             SELECT 1
@@ -98,7 +98,7 @@ ON public.users
 FOR DELETE
 TO authenticated
 USING (
-    public.current_role() = 'tenant_admin'
+    public.current_tenant_role() = 'tenant_admin'
     AND public.is_active_membership()
     AND EXISTS (
         SELECT 1

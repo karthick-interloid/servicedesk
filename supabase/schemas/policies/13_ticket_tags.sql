@@ -25,7 +25,7 @@ FOR SELECT
 TO authenticated
 USING (
     tenant_id = public.current_tenant_id()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'manager',
         'agent'
@@ -46,7 +46,7 @@ FOR INSERT
 TO authenticated
 WITH CHECK (
     tenant_id = public.current_tenant_id()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'manager',
         'agent'
@@ -67,7 +67,7 @@ FOR DELETE
 TO authenticated
 USING (
     tenant_id = public.current_tenant_id()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'manager',
         'agent'

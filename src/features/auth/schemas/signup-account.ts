@@ -14,6 +14,11 @@ export const MIN_PASSWORD_LENGTH = 8;
  */
 export const signupAccountSchema = z
   .object({
+    // Not in the design, which collects no name anywhere in the four steps — but
+    // `public.users.full_name` is NOT NULL, so registration cannot complete without one.
+    // Deriving it from the email local-part was the alternative and would have written
+    // "sam" into every profile; asking is better than guessing at someone's name.
+    fullName: z.string().trim().min(1, "Enter your full name"),
     email: emailField("Enter your email address"),
     password: z
       .string()

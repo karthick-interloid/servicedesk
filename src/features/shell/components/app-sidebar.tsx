@@ -18,7 +18,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ORG, USER } from "@/features/shell/lib/identity";
+import type { ShellIdentity } from "@/features/shell/lib/identity";
 import { NAV_GROUPS, findActiveNavItem } from "@/features/shell/lib/nav";
 
 /**
@@ -30,8 +30,17 @@ import { NAV_GROUPS, findActiveNavItem } from "@/features/shell/lib/nav";
  * `--breakpoint-wide` (1800px) step, 72px when railed. They are applied as CSS custom
  * properties — the permanent ones on SidebarProvider in the route-group layout, the
  * sheet one in globals.css — so `ui/sidebar.tsx` stays untouched.
+ *
+ * Only three values are real data — the tenant name, its plan summary, and the signed-in
+ * user. They arrive as a prop rather than being fetched here: `getShellIdentity` reaches
+ * `next/headers`, and this is a Client Component (`usePathname`), so importing it would
+ * pull a server-only module into the client graph. The route-group layout resolves it
+ * once for the sidebar, the top bar and the footer.
+ *
+ * Nav is chrome and renders either way — only the two identity-bearing blocks wait on it,
+ * because a sidebar that returns `null` takes the whole navigation down with it.
  */
-export function AppSidebar() {
+export function AppSidebar({ identity }: { identity: ShellIdentity | null }) {
   const pathname = usePathname();
   const active = findActiveNavItem(pathname);
 
@@ -40,11 +49,13 @@ export function AppSidebar() {
       <SidebarHeader className="gap-2.5 border-b border-sidebar-border p-3.5 group-data-[collapsible=icon]:px-2">
         <div className="flex items-center gap-2.5">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sm font-extrabold text-sidebar-primary-foreground">
-            {ORG.initial}
+            {identity?.org.initial}
           </div>
           <div className="flex min-w-0 flex-1 flex-col group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-sm font-bold text-foreground">{ORG.name}</span>
-            <span className="truncate text-xs text-muted-foreground">{ORG.planSummary}</span>
+            <span className="truncate text-sm font-bold text-foreground">{identity?.org.name}</span>
+            <span className="truncate text-xs text-muted-foreground">
+              {identity?.org.planSummary}
+            </span>
           </div>
           {/* Org switcher affordance only — it opens nothing in this pass. */}
           <ChevronDown
@@ -98,12 +109,14 @@ export function AppSidebar() {
         <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
           <Avatar>
             <AvatarFallback className="bg-foreground text-xs font-bold text-background">
-              {USER.initials}
+              {identity?.user.initials}
             </AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-sm font-semibold text-foreground">{USER.name}</span>
-            <span className="truncate text-xs text-muted-foreground">{USER.role}</span>
+            <span className="truncate text-sm font-semibold text-foreground">
+              {identity?.user.name}
+            </span>
+            <span className="truncate text-xs text-muted-foreground">{identity?.user.role}</span>
           </div>
         </div>
       </SidebarFooter>
