@@ -8,11 +8,23 @@ import {
   updateTicketSchema,
 } from "@/features/tickets/schemas/new-ticket";
 import {
+  createSavedViewSchema,
+  deleteSavedViewSchema,
+  renameSavedViewSchema,
+  shareSavedViewSchema,
+} from "@/features/tickets/schemas/saved-view";
+import {
   importTickets,
   previewImport,
   type ImportPreview,
   type ImportResult,
 } from "@/features/tickets/services/csv-import";
+import {
+  createSavedView,
+  deleteSavedView,
+  renameSavedView,
+  setSavedViewShared,
+} from "@/features/tickets/services/saved-view.service";
 import {
   TicketError,
   addMessage,
@@ -205,4 +217,133 @@ function toMapping(value: unknown): (CsvFieldName | null)[] | undefined {
   );
 
   return mapping;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Saved views
+
+   Every mutation below is owner-scoped by `saved_views` RLS, not by anything here:
+   the policies added in `20260811060000_fix_saved_views_per_user_rls` restrict UPDATE
+   and DELETE to `owner_user_id = auth.uid()`. A write aimed at a colleague's private
+   view matches no row, and `saved-view.service.ts` turns that into `not_found` rather
+   than letting it read as success.
+
+   `/views` and `/tickets` are both revalidated: the queue renders the same views as
+   its tabs, so a view created or renamed here is stale there until it is.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/** Create a saved view owned by the caller. */
+export async function createSavedViewAction(
+  values: unknown,
+): Promise<TicketActionResult<{ id: string }>> {
+  const parsed = createSavedViewSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      code: "validation",
+      message: "Name this view before saving.",
+      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  try {
+    const view = await createSavedView(parsed.data);
+
+    revalidatePath("/views");
+    revalidatePath("/tickets");
+
+    return { success: true, data: view };
+  } catch (error) {
+    return toFailure(
+      error,
+      "We couldn't create that view. Try again in a moment.",
+      "createSavedViewAction",
+    );
+  }
+}
+
+/** Rename a saved view. Owner only — enforced by the UPDATE policy. */
+export async function renameSavedViewAction(values: unknown): Promise<TicketActionResult<null>> {
+  const parsed = renameSavedViewSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      code: "validation",
+      message: "Name this view before saving.",
+      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  try {
+    await renameSavedView(parsed.data);
+
+    revalidatePath("/views");
+    revalidatePath("/tickets");
+
+    return { success: true, data: null };
+  } catch (error) {
+    return toFailure(
+      error,
+      "We couldn't rename that view. Try again in a moment.",
+      "renameSavedViewAction",
+    );
+  }
+}
+
+/**
+ * Share a view with the tenant, or make it private again.
+ *
+ * Flips `saved_views.is_shared`, the real column the SELECT policy reads — sharing a view
+ * is what makes it visible to colleagues, and un-sharing genuinely removes it from their
+ * list. The design draws no affordance for this (see `saved-views-list.tsx`), so nothing
+ * in the UI calls it yet; it is the data-layer half of a feature whose screen has not been
+ * designed.
+ */
+export async function setSavedViewSharedAction(values: unknown): Promise<TicketActionResult<null>> {
+  const parsed = shareSavedViewSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return { success: false, code: "validation", message: "That isn't a view we can share." };
+  }
+
+  try {
+    await setSavedViewShared(parsed.data);
+
+    revalidatePath("/views");
+    revalidatePath("/tickets");
+
+    return { success: true, data: null };
+  } catch (error) {
+    return toFailure(
+      error,
+      "We couldn't change who can see that view.",
+      "setSavedViewSharedAction",
+    );
+  }
+}
+
+/** Delete a saved view. Owner only — a colleague's private view is off-limits. */
+export async function deleteSavedViewAction(values: unknown): Promise<TicketActionResult<null>> {
+  const parsed = deleteSavedViewSchema.safeParse(values);
+
+  if (!parsed.success) {
+    return { success: false, code: "validation", message: "That isn't a view we can delete." };
+  }
+
+  try {
+    await deleteSavedView(parsed.data.id);
+
+    revalidatePath("/views");
+    revalidatePath("/tickets");
+
+    return { success: true, data: null };
+  } catch (error) {
+    return toFailure(
+      error,
+      "We couldn't delete that view. Try again in a moment.",
+      "deleteSavedViewAction",
+    );
+  }
 }

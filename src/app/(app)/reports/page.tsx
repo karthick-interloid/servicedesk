@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ReportsDashboard } from "@/features/reports/components/reports-dashboard";
-import type { ReportsState } from "@/features/reports/types";
+import { getReportsOverview } from "@/features/reports/services/reports.service";
 
 export const metadata: Metadata = {
   title: "Reports",
@@ -9,8 +9,6 @@ export const metadata: Metadata = {
     canonical: "/reports",
   },
 };
-
-const STATES: readonly ReportsState[] = ["default", "loading"];
 
 /**
  * Reports — a SINGLE screen, not a section.
@@ -20,23 +18,19 @@ const STATES: readonly ReportsState[] = ["default", "loading"];
  * once at `/reports` (`features/shell/lib/nav.ts`). There are no per-metric drill-downs to
  * follow up on — every figure on the screen is terminal, and nothing on it is a link.
  *
- * ███ UI-ONLY — every figure is `mock-reports.ts`, a local module. ███
+ * WIRED. Every figure comes from `public.reports_overview()`, a SECURITY INVOKER RPC, so
+ * `tickets_select` and the `sla_events` policies scope the aggregate — one round trip, no
+ * tenant filter in application code. See `features/reports/services/reports.service.ts`.
  *
- * No Supabase client, no query, no server action, which is why this is a plain synchronous
- * Server Component. The wiring slice replaces the mock module's exports with aggregate
- * reads (`tickets` grouped by priority, `sla_events` by status, a memberships join for the
- * agent table) and this file becomes async — `ReportsDashboard` does not change.
+ * The `?state=loading` demo parameter is GONE: `loading.tsx` now renders the design's
+ * skeleton against the real await, which is what it was standing in for.
  *
- * `?state=loading` forces the design's skeleton, matching the convention `/tickets` and
- * `/views` already use. It earns its keep here for the same reason it does there: with the
- * data hard-coded there is otherwise no way to look at the loading state at all.
+ * No try/catch, for the same reason `/views` gives: the design registers no error state
+ * for this screen, so a failed read belongs to the app's own `error.tsx` boundary rather
+ * than to an invented card.
  */
-export default async function ReportsPage(props: PageProps<"/reports">) {
-  const { state } = await props.searchParams;
-  const requested = Array.isArray(state) ? state[0] : state;
-  const demoState = STATES.includes(requested as ReportsState)
-    ? (requested as ReportsState)
-    : "default";
+export default async function ReportsPage() {
+  const overview = await getReportsOverview();
 
-  return <ReportsDashboard state={demoState} />;
+  return <ReportsDashboard overview={overview} />;
 }

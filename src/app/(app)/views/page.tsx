@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 
 import { SavedViewsList } from "@/features/tickets/components/saved-views-list";
-import { MOCK_SAVED_VIEWS } from "@/features/tickets/lib/mock-saved-views";
-import type { SavedViewsState } from "@/features/tickets/types";
+import { listSavedViews } from "@/features/tickets/services/saved-view.service";
 
 export const metadata: Metadata = {
   title: "Saved views",
@@ -10,8 +9,6 @@ export const metadata: Metadata = {
     canonical: "/views",
   },
 };
-
-const STATES: readonly SavedViewsState[] = ["default", "empty"];
 
 /**
  * Saved views management.
@@ -22,25 +19,22 @@ const STATES: readonly SavedViewsState[] = ["default", "empty"];
  * `/tickets` would break the sidebar's longest-prefix active match — `/tickets` would
  * light up instead of "Saved views".
  *
- * ███ UI-ONLY — the rows are `MOCK_SAVED_VIEWS`, a local module. ███
+ * WIRED. `listSavedViews()` reads `public.saved_views` on the anon key plus the caller's
+ * own session, so the rows are exactly what `saved_views_select` allows: the caller's own
+ * views plus the tenant's shared ones. A colleague's private view is not merely hidden
+ * here — it never leaves Postgres.
  *
- * No Supabase client, no query, no server action. That is why this is a plain synchronous
- * Server Component while `/tickets` is async: there is nothing to await. The wiring slice
- * replaces the `MOCK_SAVED_VIEWS` import with a per-user-scoped `saved_views` read (the
- * query is written out on `SavedView` in features/tickets/types.ts) and this file becomes
- * async — `SavedViewsList` does not change.
+ * The `?state=empty` demo parameter is GONE. It existed only because the rows were a
+ * hard-coded module with no way to look at the empty card; the empty state is now simply a
+ * tenant with no views, which is reachable for real.
  *
- * `?state=empty` forces the empty card, matching the convention `/tickets` already uses
- * for its four states. It exists because the data is stubbed: with ten hard-coded rows
- * there is otherwise no way to look at the empty state.
+ * No try/catch: a failed read is a genuine server error, and the app's own `error.tsx`
+ * boundary is the treatment for it. The design registers only `["Default"]` for this
+ * screen — it draws no error card — so catching here would mean inventing one. Same
+ * reasoning `/customers/[id]` gives for falling through to `not-found.tsx`.
  */
-export default async function SavedViewsPage(props: PageProps<"/views">) {
-  const { state } = await props.searchParams;
-  const requested = Array.isArray(state) ? state[0] : state;
-  const demoState = STATES.includes(requested as SavedViewsState)
-    ? (requested as SavedViewsState)
-    : "default";
+export default async function SavedViewsPage() {
+  const views = await listSavedViews();
 
-  // The empty state is just an empty row list — `SavedViewsList` needs no flag for it.
-  return <SavedViewsList views={demoState === "empty" ? [] : MOCK_SAVED_VIEWS} />;
+  return <SavedViewsList views={views} />;
 }

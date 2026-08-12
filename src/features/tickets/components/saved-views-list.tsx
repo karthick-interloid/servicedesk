@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Bookmark } from "lucide-react";
+
+import { createSavedViewAction, renameSavedViewAction } from "@/features/tickets/actions";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,22 +28,29 @@ import {
 import type { SavedView } from "../types";
 
 /* ---------------------------------------------------------------------------
-   PRESENTATIONAL ONLY — NOTHING HERE PERSISTS.
+   WIRED. `views` is a real `saved_views` read, per-user-scoped by RLS, and both
+   mutations are Server Actions:
 
-   Every mutation below edits `useState` and stops there: no server action, no fetch,
-   no supabase-js. Reloading the page restores the mock rows. Specifically:
-
-     · "New view"  → appends a row to local state
-     · "Edit"      → opens the modal, and Save renames the row in local state
+     · "New view"  → createSavedViewAction  (owner is always the caller)
+     · "Edit"      → renameSavedViewAction  (owner-only, enforced by the UPDATE policy)
      · "Open"      → a real <Link> to /tickets (the only thing that leaves this screen)
 
-   There is NO delete, duplicate or share action, because the design has none — the row
-   ends at Edit + Open. See docs/SAVED-VIEWS-DIFF.md § "Not in the design".
+   No local copy of the rows is kept. Both actions `revalidatePath("/views")`, so the
+   Server Component re-renders and `views` arrives updated — holding a `useState` mirror
+   would mean rendering the optimistic guess instead of what the database actually stored,
+   and the two disagree the moment a write is refused.
+
+   THERE IS STILL NO DELETE OR SHARE CONTROL HERE, and that is deliberate: the design draws
+   neither. `deleteSavedViewAction` and `setSavedViewSharedAction` exist and are RLS-verified
+   (see actions.ts), but giving them buttons would mean inventing a row treatment, a
+   confirmation and a shared/private affordance the design has never drawn. Logged in
+   docs/WIRING-SAVEDVIEWS-REPORTS.md § Deviations.
 
    The modal's Filter select is rendered because the design renders it, but it is inert:
    it never writes to `filterJson`. The design's own modal is equally inert (its `saveView`
    only fires a toast), and inventing a filter-builder is exactly the kind of thing this
-   pass must not do.
+   pass must not do. New views are therefore created with an empty filter — which is a
+   legitimate "all tickets" view, not a broken one.
    --------------------------------------------------------------------------- */
 
 /* Measured off `Update design.dc.html` → `barGhost`: 34px tall from md up, the 44px tap
@@ -62,62 +71,57 @@ export function SavedViewsList({
   views,
 }: {
   /**
-   * The mock rows. Real source: the per-user-scoped `saved_views` query.
+   * The caller's saved views: their own (private or shared) plus the tenant's shared ones.
+   * That set is produced by the `saved_views_select` policy, not by any filter here.
    *
    * The empty state is NOT a separate prop — it is simply this arriving empty, which is
-   * what `?state=empty` produces (see `page.tsx`) and what a real tenant with no views
-   * would produce. Deriving it from the row count rather than a flag is what lets a view
-   * created from the empty state replace the empty card immediately.
+   * what a tenant with no views produces. Deriving it from the row count rather than a flag
+   * is what lets a view created from the empty state replace the empty card immediately.
    */
   views: SavedView[];
 }) {
-  const [rows, setRows] = useState<SavedView[]>(views);
-
   /* `null` = closed. `{ id: "" }` = the New-view case, which the design distinguishes
      only by its title ("New view" vs "Edit view") — the body is identical. */
   const [editing, setEditing] = useState<EditorTarget>(null);
   const [draftName, setDraftName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const isEmpty = rows.length === 0;
+  const isEmpty = views.length === 0;
 
   const openNew = () => {
     setEditing({ id: "", name: "" });
     setDraftName("");
+    setError(null);
   };
 
   const openEdit = (view: SavedView) => {
     setEditing({ id: view.id, name: view.name });
     setDraftName(view.name);
+    setError(null);
   };
 
   const save = () => {
     const name = draftName.trim();
-    if (!editing || name.length === 0) return;
+    if (!editing || name.length === 0 || isPending) return;
 
-    if (editing.id === "") {
-      // A new row carries the same shape as a fetched one so the list stays homogeneous.
-      // The ids and timestamps are local fictions — the database assigns both.
-      const now = new Date().toISOString();
-      setRows((prev) => [
-        ...prev,
-        {
-          id: `sv-local-${prev.length + 1}`,
-          tenantId: prev[0]?.tenantId ?? "t-northwind",
-          ownerUserId: prev[0]?.ownerUserId ?? "u-sam-okafor",
-          owner: prev[0]?.owner ?? { id: "u-sam-okafor", fullName: "Sam Okafor" },
-          name,
-          filterJson: {},
-          isShared: false,
-          ticketCount: 0,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ]);
-    } else {
-      setRows((prev) => prev.map((r) => (r.id === editing.id ? { ...r, name } : r)));
-    }
+    setError(null);
 
-    setEditing(null);
+    startTransition(async () => {
+      const result =
+        editing.id === ""
+          ? await createSavedViewAction({ name })
+          : await renameSavedViewAction({ id: editing.id, name });
+
+      // The modal stays open on failure. Closing it would discard what the user typed and
+      // leave the list looking as though the change had landed.
+      if (!result.success) {
+        setError(result.message);
+        return;
+      }
+
+      setEditing(null);
+    });
   };
 
   return (
@@ -169,7 +173,7 @@ export function SavedViewsList({
            `cardPlain` in the design: white, 1px border, radius 14, overflow hidden and
            NO padding of its own — every row supplies its own 14px/16px inset. */
         <Card className="gap-0 rounded-[14px] p-0">
-          {rows.map((view) => (
+          {views.map((view) => (
             <div
               key={view.id}
               /* The design's `rowCard`: flex-wrap so the actions drop under a long name
@@ -270,15 +274,27 @@ export function SavedViewsList({
             </Select>
           </div>
 
+          {/* The design draws no error treatment for this modal — it has no failing save to
+              draw one for. This borrows the destructive-ink alert line the new-ticket sheet
+              already uses, rather than inventing a second error language. */}
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+
           <div className="flex flex-wrap justify-end gap-2.5">
             <Button variant="neutral" size="touch" onClick={() => setEditing(null)}>
               Cancel
             </Button>
             {/* Never disabled: the standing rule is hide-don't-disable, and the design's
-                own Save is always live. An empty name is refused inside `save()`. */}
+                own Save is always live. An empty name is refused inside `save()`, and so is
+                a second click while the first is still in flight — `aria-busy` is the only
+                thing that changes, since the design draws no pending treatment. */}
             <Button
               size="touch"
               onClick={save}
+              aria-busy={isPending}
               className="bg-brand-accent font-semibold text-brand-accent-foreground hover:bg-brand-accent/90"
             >
               Save view
