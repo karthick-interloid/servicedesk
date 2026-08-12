@@ -19,7 +19,7 @@ TO authenticated
 USING (
     tenant_id = public.current_tenant_id()
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'billing_admin'
     )
@@ -38,7 +38,7 @@ TO authenticated
 WITH CHECK (
     tenant_id = public.current_tenant_id()
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'billing_admin'
     )
@@ -57,7 +57,7 @@ TO authenticated
 USING (
     tenant_id = public.current_tenant_id()
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'billing_admin'
     )
@@ -65,7 +65,7 @@ USING (
 WITH CHECK (
     tenant_id = public.current_tenant_id()
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'billing_admin'
     )
@@ -84,5 +84,5 @@ TO authenticated
 USING (
     tenant_id = public.current_tenant_id()
     AND public.is_active_membership()
-    AND public.current_role() = 'tenant_admin'
+    AND public.current_tenant_role() = 'tenant_admin'
 );

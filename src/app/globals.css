@@ -92,10 +92,13 @@
   --color-note-border: var(--note-border);
   --color-note-foreground: var(--note-foreground);
   --color-chart-muted: var(--chart-muted);
+  --color-chart-axis: var(--chart-axis);
   --color-brand-soft: var(--brand-soft);
   --color-brand-ink: var(--brand-ink);
   --color-brand-accent: var(--brand-accent);
   --color-brand-accent-foreground: var(--brand-accent-foreground);
+  --color-brand-badge: var(--brand-badge);
+  --color-brand-badge-foreground: var(--brand-badge-foreground);
   --color-brand-hover: var(--brand-hover);
   --color-brand-pressed: var(--brand-pressed);
 
@@ -139,6 +142,17 @@
   --brand-accent: #0f766e;
   --brand-accent-foreground: #ffffff;
 
+  /* Badge-only brand pair. ADDED — no existing token's value moved. Before the
+     2026-08-07 sync these two literals WERE --accent/--accent-foreground; the sync
+     moved --accent onto the teal selected surface and its own §Custom variables
+     states the reason: "green-100 stays badge-only so a selected control never reads
+     as a brand badge." Splitting the pair out is what makes that sentence true —
+     `lib/badge-tones.ts` brand tone reads from here, everything selected-state still
+     reads from --accent. The ticket-queue capture measures #DCFCE7 (575px) and
+     #166534 on the `New` pill, confirming both. */
+  --brand-badge: #dcfce7;
+  --brand-badge-foreground: #166534;
+
   --background: #f8fafc;
   --foreground: #0f172a;
   --card: #ffffff;
@@ -167,6 +181,15 @@
   --chart-4: #4f46e5;
   --chart-5: #d97706;
   --chart-muted: #cbd5e1;
+  /* Chart axis-tick ink. Measured #94A3B8 (slate-400) on the Reports bar chart's W23…W30
+     labels — one step lighter than --muted-foreground (#64748B), which is what
+     ui/chart.tsx paints ticks by default and what every other caption on the screen uses.
+     It is the same slate-400 treatments.md §4 records for the eyebrow role, which has no
+     token either. Declared once here rather than reached for as a palette literal at the
+     call site. Deliberately NOT redeclared under .dark: slate-400 sits at ~7.5:1 on the
+     dark surface, so the single value is correct in both themes and no dark rule is
+     authored for it. See docs/REPORTS-DIFF.md § Token added. */
+  --chart-axis: #94a3b8;
 
   --sidebar: #ffffff;
   --sidebar-foreground: #334155;
@@ -237,6 +260,14 @@
   --muted-foreground: var(--color-slate-400);
   --accent: var(--color-slate-800);
   --accent-foreground: var(--color-slate-50);
+
+  /* The design declares no dark value for the badge green, and green-100 on a slate-950
+     card is unreadable. Aliased onto the dark --accent pair the design DOES declare, so
+     no dark value is invented — the cost is that `New` reads neutral in dark. Same class
+     of accessibility completion as --success-foreground / --warning-foreground above;
+     flagged in docs/QUEUE-DIFF.md rather than smuggled in. */
+  --brand-badge: var(--accent);
+  --brand-badge-foreground: var(--accent-foreground);
 
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 16%);

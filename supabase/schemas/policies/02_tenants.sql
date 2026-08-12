@@ -28,7 +28,7 @@ ON public.tenants
 FOR INSERT
 TO authenticated
 WITH CHECK (
-    public.current_role() = 'tenant_admin'
+    public.current_tenant_role() = 'tenant_admin'
 );
 
 -- =====================================================
@@ -42,11 +42,11 @@ FOR UPDATE
 TO authenticated
 USING (
     id = public.current_tenant_id()
-    AND public.current_role() = 'tenant_admin'
+    AND public.current_tenant_role() = 'tenant_admin'
 )
 WITH CHECK (
     id = public.current_tenant_id()
-    AND public.current_role() = 'tenant_admin'
+    AND public.current_tenant_role() = 'tenant_admin'
 );
 
 -- =====================================================
@@ -60,5 +60,5 @@ FOR DELETE
 TO authenticated
 USING (
     id = public.current_tenant_id()
-    AND public.current_role() = 'tenant_admin'
+    AND public.current_tenant_role() = 'tenant_admin'
 );

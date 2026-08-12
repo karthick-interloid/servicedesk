@@ -36,4 +36,10 @@ VALUES
 ('Australia/Melbourne', 'Australian Eastern Time', 'Australia'),
 ('Australia/Perth', 'Australian Western Time', 'Australia'),
 
-('Pacific/Auckland', 'New Zealand Standard Time', 'New Zealand');
+('Pacific/Auckland', 'New Zealand Standard Time', 'New Zealand'),
+
+-- Added for the signup flow: the create-org / onboarding Select offers a "brt" and an
+-- "eet" option (src/features/auth/lib/timezones.ts), and without these two rows picking
+-- either one fails to resolve to a `timezones.id` and blocks provisioning.
+('America/Sao_Paulo', 'Brasilia Time', 'Brazil'),
+('Europe/Athens', 'Eastern European Time', 'Greece');

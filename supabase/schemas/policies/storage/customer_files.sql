@@ -9,7 +9,7 @@ TO authenticated
 USING (
     bucket_id = 'customer-files'
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'manager',
         'agent'
@@ -26,7 +26,7 @@ TO authenticated
 WITH CHECK (
     bucket_id = 'customer-files'
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'manager',
         'agent'
@@ -43,7 +43,7 @@ TO authenticated
 USING (
     bucket_id = 'customer-files'
     AND public.is_active_membership()
-    AND public.current_role() IN (
+    AND public.current_tenant_role() IN (
         'tenant_admin',
         'manager'
     )

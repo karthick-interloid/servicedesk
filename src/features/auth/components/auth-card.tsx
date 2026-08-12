@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { ORG } from "@/features/shell/lib/identity";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,7 +25,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           aria-hidden
           className="flex size-[34px] shrink-0 items-center justify-center rounded-md bg-brand-accent text-base font-extrabold text-brand-accent-foreground"
         >
-          {ORG.initial}
+          {"test".charAt(0).toUpperCase()}
         </span>
         <span className="text-lg font-bold tracking-[-0.025em] text-foreground">
           ServiceDesk Pro

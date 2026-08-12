@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 3000;
+// Overridable so the suite can run when 3000 is already taken by another project's dev
+// server. Defaults to 3000, so nothing changes for anyone who has it free.
+const PORT = Number(process.env.PORT ?? 3000);
 const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({

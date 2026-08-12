@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -26,6 +27,7 @@ import { AuthCard } from "@/features/auth/components/auth-card";
 import { SignupStepper } from "@/features/auth/components/signup-stepper";
 import { DEFAULT_TIMEZONE_ID, TIMEZONES, timezoneHint } from "@/features/auth/lib/timezones";
 import { createOrgSchema, type CreateOrgValues } from "@/features/auth/schemas/create-org";
+import { patchSignupDraft, readSignupDraft } from "@/features/auth/store/signup-draft";
 
 /**
  * "Create your organization", transcribed from `Update design.dc.html` → the `scrCreateOrg`
@@ -46,18 +48,27 @@ import { createOrgSchema, type CreateOrgValues } from "@/features/auth/schemas/c
  * server action. Advancing is the only side effect.
  */
 
-/** The design's seeded values, so the screen renders as the capture does. */
-const SEED_NAME = "Northwind Support";
-const SEED_SLUG = "northwind";
-
 /** Matches the field metrics measured on login: 42px, 6px radius. */
 const FIELD_CLASS = "h-11 rounded-sm text-sm md:h-10.5";
 
 export function CreateOrgForm() {
   const router = useRouter();
+
+  // Read once, on mount. The draft is the source of truth across the three routes, so
+  // arriving here via Back from /onboarding restores what was typed rather than resetting it.
+  const [draft] = React.useState(readSignupDraft);
+
   const form = useForm<CreateOrgValues>({
+    // Empty, not the design's seeded "Northwind Support" / "northwind". Those made the
+    // capture render as drawn, but this screen now provisions a real organization — a user
+    // who clicks straight through would create one called Northwind on someone else's
+    // portal address. Restore them in `defaultValues` for a capture-identical screenshot.
+    defaultValues: {
+      name: draft.organizationName,
+      slug: draft.portalSlug,
+      timezone: draft.timezoneId || DEFAULT_TIMEZONE_ID,
+    },
     resolver: zodResolver(createOrgSchema),
-    defaultValues: { name: SEED_NAME, slug: SEED_SLUG, timezone: DEFAULT_TIMEZONE_ID },
   });
 
   // The portal-address hint tracks the field live, so it stays the same string the
@@ -65,8 +76,16 @@ export function CreateOrgForm() {
   // returns an unmemoizable function and makes React Compiler skip the whole component.
   const slug = useWatch({ control: form.control, name: "slug" });
 
-  function onSubmit() {
-    // Nothing is created — this only advances the flow to the next route.
+  function onSubmit(values: CreateOrgValues) {
+    // Still nothing created; the organization is provisioned by "Finish setup" on
+    // /onboarding. `timezoneId` is written here and then offered again on onboarding step 1,
+    // because the design asks for it on both screens — the later answer wins.
+    patchSignupDraft({
+      organizationName: values.name,
+      portalSlug: values.slug,
+      timezoneId: values.timezone,
+    });
+
     router.push("/onboarding");
   }
 

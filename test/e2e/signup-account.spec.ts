@@ -3,8 +3,9 @@ import { expect, test } from "@playwright/test";
 import { hydrated } from "./support/hydrated";
 
 /**
- * Step 1 of 4 — the design-authored account screen. No provisioning happens; the only
- * side effect of a valid submit is a route transition to /create-org.
+ * Step 1 of 4 — the design-authored account screen. Still no provisioning: a valid submit
+ * saves to the signup draft and moves to /create-org. The account itself isn't created until
+ * "Finish setup" on /onboarding.
  */
 
 test("the account screen carries no app-shell chrome and marks step 1", async ({ page }) => {
@@ -25,6 +26,7 @@ test("an empty submit reports every field and does not navigate", async ({ page 
   await hydrated(page);
   await page.getByRole("button", { name: "Continue" }).click();
 
+  await expect(page.locator("#account-full-name-error")).toHaveText("Enter your full name");
   await expect(page.locator("#account-email-error")).toHaveText("Enter your email address");
   await expect(page.locator("#account-password-error")).toHaveText("Enter a password");
   await expect(page.locator("#account-confirm-error")).toHaveText("Re-enter your password");
@@ -78,6 +80,7 @@ test("the reveal toggle flips the input type without touching the value", async 
 test("a valid account advances to /create-org", async ({ page }) => {
   await page.goto("/signup");
   await hydrated(page);
+  await page.fill("#account-full-name", "Ada Lovelace");
   await page.fill("#account-email", "ada@acme.io");
   await page.fill("#account-password", "correct-horse");
   await page.fill("#account-confirm", "correct-horse");

@@ -45,7 +45,6 @@ const eventId = Sentry.captureException(
 );
 
 console.log(`Captured test event: ${eventId}`);
-console.log("Flushing to Sentry...");
 
 const delivered = await Sentry.flush(1000);
 
